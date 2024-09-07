@@ -1,0 +1,110 @@
+{
+  "did": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+  "oneTimeUse": true,
+  "vc": {
+    "@context": [
+      "https://w3id.org/security/bbs/v1",
+      "https://www.w3.org/2018/credentials/v1",
+      "https://limbertlino.github.io/schemas/passport.json"
+    ],
+    "id": "172536383625188",
+    "type": ["VerifiableCredential", "TuristCredential"],
+    "issuer": {
+      "id": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+      "name": "Club techie"
+    },
+    "issuanceDate": "Tue Sep 03 2024 09:02:03 GMT-0400 (Atlantic Standard Time)",
+    "expirationDate": "2025-08-31",
+    "credentialSubject": {
+      "name": "Limbert Lino",
+      "passport": "B-43214583",
+      "period": "2024-08-31 - 2025-08-31",
+      "gender": "female"
+    }
+  },
+  "outputDescriptor": {
+    "id": "turist-output",
+    "schema": "turist-output",
+    "display": {
+      "title": {
+        "text": "Club Techie"
+      },
+      "subtitle": {
+        "text": "Credencial de socio"
+      },
+      "description": {
+        "text": "With this credential, you have the following benefits/access:\n\nVentajas adicionales:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park"
+      },
+      "properties": [
+        {
+          "label": "Nombre",
+          "path": ["$.credentialSubject.name"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Name"
+        },
+        {
+          "label": "Número de pasaporte",
+          "path": ["$.credentialSubject.passport"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Passport"
+        },
+        {
+          "label": "Período de estadía",
+          "path": ["$.credentialSubject.period"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Period"
+        },
+        {
+          "label": "Genero",
+          "path": ["$.credentialSubject.gender"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Genero"
+        }
+      ]
+    },
+
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "alt": "Background"
+      },
+      "background": {
+        "color": "#FFFFFF"
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  },
+  "issuer": {
+    "name": "Club tech de Limbert",
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "alt": "Background"
+      },
+      "background": {
+        "color": "#FFFFFF"
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  }
+}

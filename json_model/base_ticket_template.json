@@ -1,0 +1,101 @@
+{
+  "did": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+  "oneTimeUse": true,
+  "vc": {
+    "@context": [
+      "https://w3id.org/security/bbs/v1",
+      "https://www.w3.org/2018/credentials/v1",
+      "https://limbertlino.github.io/schemas/visitor.json"
+    ],
+    "id": "172536383625188",
+    "type": ["VerifiableCredential", "VisitorCredential"],
+    "issuer": {
+      "id": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+      "name": "Dreamscape Park"
+    },
+    "issuanceDate": "Tue Sep 03 2024 09:02:03 GMT-0400 (Atlantic Standard Time)",
+    "expirationDate": "2025-08-31",
+    "credentialSubject": {
+      "name": "Limbert Lino",
+      "membership": "3235",
+      "period": "2024-08-31 - 2025-08-31"
+    }
+  },
+  "outputDescriptor": {
+    "id": "visitor-output",
+    "schema": "visitor-output",
+    "display": {
+      "title": {
+        "text": "Regular pass"
+      },
+      "subtitle": {
+        "text": "Enjoy Main Attractions"
+      },
+      "description": {
+        "text": "With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park"
+      },
+      "properties": [
+        {
+          "label": "Name",
+          "path": ["$.credentialSubject.name"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Name"
+        },
+        {
+          "label": "Membership Id",
+          "path": ["$.credentialSubject.membership"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Membership"
+        },
+        {
+          "label": "Visit duration",
+          "path": ["$.credentialSubject.period"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Period"
+        }
+      ]
+    },
+
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "alt": "Background"
+      },
+      "background": {
+        "color": "#FFFFFF"
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  },
+  "issuer": {
+    "name": "Dreamscape Park",
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "alt": "Background"
+      },
+      "background": {
+        "color": "#FFFFFF"
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  }
+}
