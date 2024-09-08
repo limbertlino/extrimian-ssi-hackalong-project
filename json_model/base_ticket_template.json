@@ -13,11 +13,11 @@
       "id": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
       "name": "Dreamscape Park"
     },
-    "issuanceDate": "Tue Sep 03 2024 09:02:03 GMT-0400 (Atlantic Standard Time)",
-    "expirationDate": "2025-08-31",
+    "issuanceDate": "",
+    "expirationDate": "",
     "credentialSubject": {
-      "name": "Limbert Lino",
-      "category": "Standard"
+      "name": "",
+      "category": ""
     }
   },
   "outputDescriptor": {
@@ -25,7 +25,7 @@
     "schema": "visitor-output",
     "display": {
       "title": {
-        "text": "Regular pass"
+        "text": ""
       },
       "subtitle": {
         "text": "Enjoy Main Attractions"
@@ -59,7 +59,7 @@
         "alt": "Logo"
       },
       "hero": {
-        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "uri": "",
         "alt": "Background"
       },
       "background": {
@@ -78,7 +78,7 @@
         "alt": "Logo"
       },
       "hero": {
-        "uri": "https://i.ibb.co/bHF3g7m/Credencial-Hack-Along-1.png",
+        "uri": "",
         "alt": "Background"
       },
       "background": {

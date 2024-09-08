@@ -1,57 +1,53 @@
 #[macro_use]
 extern crate rocket;
 
+use chrono::{Duration, Local};
+use nanoid::nanoid;
 use reqwest::Error;
-use rocket::serde::json::Json;
-// use rocket::time::Duration;
 use rocket::{
     http::Status,
-    serde::json::{json, Value},
+    serde::json::{json, Json, Value},
+    serde::{Deserialize, Serialize},
 };
-
-use chrono::{Duration, Local};
 use std::fs;
 
-use nanoid::nanoid;
-// use uuid::Uuid;
-
-// use serde_json::Value;
-
-use rocket::serde::{Deserialize, Serialize};
-
-
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "rocket::serde")]
+enum Category {
+    Standard,
+    Vip,
+    Fast,
+    Extra,
+}
 
 #[derive(Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 struct Ticket {
     name: String,
-    category: String,
+    category: Category,
 }
 
-//TODO crear funciones o implementar para obtener la fecha actual
+impl Ticket {
+    fn create_new_id() -> String {
+        nanoid!()
+    }
 
-//TODO cambiar el comportamiento para que se pongan los datos desde credential data
-async fn get_issuance_invitation_code(credential_data: Value) -> Result<Value, Error> {
+    fn generate_issuance_date() -> String {
+        let current_date = Local::now();
+        let formated_current_date = current_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
+        formated_current_date
+    }
+
+    fn generate_expiration_date(hours: i64) -> String {
+        let expiration_date = Local::now() + Duration::hours(hours);
+        let formated_expiration_date = expiration_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
+        formated_expiration_date
+    }
+}
+
+async fn get_issuance_invitation_code(ticket: Ticket) -> Result<Value, Error> {
     let client = reqwest::Client::new();
     let base_url = "https://sandbox-ssi.extrimian.com/v1/credentialsbbs/wacioob";
-
-    //* campos de mi json */
-    // let new_id = Uuid::new_v4().to_string();
-    let new_id = nanoid!();
-
-    let new_name = credential_data;
-    println!("{}", new_name);
-
-    //* hora */
-    let issuance_date = Local::now();
-    let expiration_date = issuance_date + Duration::hours(8);
-
-    let formatted_issuance_date = issuance_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
-    let formatted_expiration_date = expiration_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
-
-    println!("nanoid: {}", new_id);
-    println!("Issuance date: {}", formatted_issuance_date);
-    println!("Expiration date: {}", formatted_expiration_date);
 
     let string_json_data = fs::read_to_string("json_model/base_ticket_template.json")
         .expect("Can't read the json file");
@@ -59,9 +55,73 @@ async fn get_issuance_invitation_code(credential_data: Value) -> Result<Value, E
     let mut json_value: Value =
         serde_json::from_str(&string_json_data).expect("JSON was not well-formatted");
 
-    json_value["vc"]["credentialSubject"]["name"] = json!("nuevo nombre");
-    json_value["vc"]["id"] = json!(new_id);
-    // json_value["vc"]["credentialSubject"] = credential_data.name;
+    //TODO cambiar colores de backup para cada credendial
+    match ticket.category {
+        Category::Standard => {
+            json_value["vc"]["id"] = json!(Ticket::create_new_id());
+            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
+            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
+            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
+            json_value["vc"]["credentialSubject"]["category"] = json!("Standard");
+            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Regular pass");
+            json_value["outputDescriptor"]["display"]["description"]["text"] =
+                json!("With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park");
+            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/regular.png");
+            json_value["issuer"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/regular.png");
+            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#245A8B");
+            json_value["issuer"]["styles"]["background"]["color"] = json!("#245A8B");
+        }
+        Category::Vip => {
+            json_value["vc"]["id"] = json!(Ticket::create_new_id());
+            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
+            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
+            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
+            json_value["vc"]["credentialSubject"]["category"] = json!("Vip");
+            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Vip pass");
+            json_value["outputDescriptor"]["display"]["description"]["text"] =
+                json!("With this credential, you have the following benefits/access:\n- Access to the park's premium facilities (15 premium + 15 main attractions)\n- Priority entrance to attractions\n- Fast pass for 5 attractions\n- Access to the general food buffet\n- Unlimited soft drinks and water at all points in the park\n- Unlimited photos within the park\n- Access to the park's pools\n- Access to VIP lounge areas\n- 50% discount on fast pass\n- Priority access to the night show and a 35% discount");
+            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/vip.png");
+            json_value["issuer"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/vip.png");
+            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#FFD700");
+            json_value["issuer"]["styles"]["background"]["color"] = json!("#FFD700");
+        }
+        Category::Extra => {
+            json_value["vc"]["id"] = json!(Ticket::create_new_id());
+            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
+            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
+            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
+            json_value["vc"]["credentialSubject"]["category"] = json!("Extra");
+            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Extra pass");
+            json_value["outputDescriptor"]["display"]["description"]["text"] =
+                json!("With this credential, you have the following benefits/access:\n- Access to the full food buffet (25% discount on seasonal special meals)\n- Access to the pool in the morning and afternoon\n- Access to the night show\n- Unlimited photos within the park\n- Rental of a locker for valuable items\n- Priority reservation at the restaurant\n- In-park transportation service");
+            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/extra.png");
+            json_value["issuer"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/extra.png");
+            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#E67E22");
+            json_value["issuer"]["styles"]["background"]["color"] = json!("#E67E22");
+        }
+        Category::Fast => {
+            json_value["vc"]["id"] = json!(Ticket::create_new_id());
+            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
+            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
+            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
+            json_value["vc"]["credentialSubject"]["category"] = json!("Fast Pass");
+            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Fast pass");
+            json_value["outputDescriptor"]["display"]["description"]["text"] =
+                json!("With this credential, you have the following benefit/access:\n- Fast pass to all attractions");
+            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/fast.png");
+            json_value["issuer"]["styles"]["hero"]["uri"] =
+                json!("https://limbertlino.github.io/schemas/images/fast.png");
+            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#28B463");
+            json_value["issuer"]["styles"]["background"]["color"] = json!("#28B463");
+        }
+    }
 
     let updated_json_string =
         serde_json::to_string(&json_value).expect("Failed to convert JSON value to string");
@@ -94,9 +154,7 @@ fn ping() -> &'static str {
 
 #[put("/issue-vc", format = "json", data = "<ticket>")]
 async fn create_new_vc(ticket: Json<Ticket>) -> Result<Value, Status> {
-    let credential_data = json!(ticket.0);
-
-    match get_issuance_invitation_code(credential_data).await {
+    match get_issuance_invitation_code(ticket.0).await {
         Ok(json) => Ok(json!(json)),
         Err(_) => Err(Status::InternalServerError),
     }
