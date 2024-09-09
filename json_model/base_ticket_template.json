@@ -63,7 +63,7 @@
         "alt": "Background"
       },
       "background": {
-        "color": "#FFFFFF"
+        "color": ""
       },
       "text": {
         "color": "#2B2B2D"
@@ -82,7 +82,7 @@
         "alt": "Background"
       },
       "background": {
-        "color": "#FFFFFF"
+        "color": ""
       },
       "text": {
         "color": "#2B2B2D"

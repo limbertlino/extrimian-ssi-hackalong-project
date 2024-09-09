@@ -11,6 +11,7 @@ use rocket::{
 };
 use std::fs;
 
+// enum para cada categoria
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 enum Category {
@@ -20,6 +21,18 @@ enum Category {
     Extra,
 }
 
+impl ToString for Category {
+    fn to_string(&self) -> String {
+        match self {
+            Category::Standard => "Standard",
+            Category::Vip => "Vip",
+            Category::Extra => "Extra",
+            Category::Fast => "Fast Pass",
+        }
+        .to_string()
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 struct Ticket {
@@ -27,6 +40,7 @@ struct Ticket {
     category: Category,
 }
 
+//TODO agregar el self aqui paa manejarlo desde la instancia
 impl Ticket {
     fn create_new_id() -> String {
         nanoid!()
@@ -45,81 +59,87 @@ impl Ticket {
     }
 }
 
+struct CategoryData {
+    title: &'static str,
+    description: &'static str,
+    hero_uri: &'static str,
+    background_color: &'static str,
+}
+
+// defino los datos de cada categoria y me permite obtener estos datos segun el match que coincida
+fn get_category_data(category: &Category) -> CategoryData {
+    match category {
+        Category::Standard => CategoryData {
+            title: "Regular Pass",
+            description: "With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park",
+            background_color: "#245A8B",
+            hero_uri: "https://limbertlino.github.io/schemas/images/regular.png",
+        },
+        Category::Vip => CategoryData {
+            title: "Vip Pass",
+            description: "With this credential, you have the following benefits/access:\n- Access to the park's premium facilities (15 premium + 15 main attractions)\n- Priority entrance to attractions\n- Fast pass for 5 attractions\n- Access to the general food buffet\n- Unlimited soft drinks and water at all points in the park\n- Unlimited photos within the park\n- Access to the park's pools\n- Access to VIP lounge areas\n- 50% discount on fast pass\n- Priority access to the night show and a 35% discount",
+            background_color: "#FFD700",
+            hero_uri: "https://limbertlino.github.io/schemas/images/vip.png",
+        },
+        Category::Fast => CategoryData {
+            title: "Fast Pass",
+            description: "With this credential, you have the following benefit/access:\n- Fast pass to all attractions",
+            background_color: "#28B463",
+            hero_uri: "https://limbertlino.github.io/schemas/images/fast.png",
+        },
+        Category::Extra => CategoryData {
+            title: "Extra Pass",
+            description: "With this credential, you have the following benefits/access:\n- Access to the full food buffet (25% discount on seasonal special meals)\n- Access to the pool in the morning and afternoon\n- Access to the night show\n- Unlimited photos within the park\n- Rental of a locker for valuable items\n- Priority reservation at the restaurant\n- In-park transportation service",
+            background_color: "#E67E22",
+            hero_uri: "https://limbertlino.github.io/schemas/images/extra.png",
+        },
+    }
+}
+
+// Aqui recibo el json que tengo de template y actualizo los campos comunes que varian
+fn update_common_fields(
+    json_value: &mut Value,
+    ticket: &Ticket,
+    id: &str,
+    issuance_date: &str,
+    expiration_date: &str,
+) {
+    json_value["vc"]["id"] = json!(id);
+    json_value["vc"]["issuanceDate"] = json!(issuance_date);
+    json_value["vc"]["expirationDate"] = json!(expiration_date);
+    json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
+    json_value["vc"]["credentialSubject"]["category"] = json!(ticket.category.to_string());
+}
+
 async fn get_issuance_invitation_code(ticket: Ticket) -> Result<Value, Error> {
     let client = reqwest::Client::new();
     let base_url = "https://sandbox-ssi.extrimian.com/v1/credentialsbbs/wacioob";
 
-    let string_json_data = fs::read_to_string("json_model/base_ticket_template.json")
+    let string_local_json_data = fs::read_to_string("json_model/base_ticket_template.json")
         .expect("Can't read the json file");
 
     let mut json_value: Value =
-        serde_json::from_str(&string_json_data).expect("JSON was not well-formatted");
+        serde_json::from_str(&string_local_json_data).expect("JSON was not well-formatted");
 
-    //TODO cambiar colores de backup para cada credendial
-    match ticket.category {
-        Category::Standard => {
-            json_value["vc"]["id"] = json!(Ticket::create_new_id());
-            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
-            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
-            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
-            json_value["vc"]["credentialSubject"]["category"] = json!("Standard");
-            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Regular pass");
+    match &ticket.category {
+        category => {
+            let data = get_category_data(category);
+            update_common_fields(
+                &mut json_value,
+                &ticket,
+                &Ticket::create_new_id(),
+                &Ticket::generate_issuance_date(),
+                &Ticket::generate_expiration_date(8),
+            );
+
+            json_value["outputDescriptor"]["display"]["title"]["text"] = json!(data.title);
             json_value["outputDescriptor"]["display"]["description"]["text"] =
-                json!("With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park");
-            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/regular.png");
-            json_value["issuer"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/regular.png");
-            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#245A8B");
-            json_value["issuer"]["styles"]["background"]["color"] = json!("#245A8B");
-        }
-        Category::Vip => {
-            json_value["vc"]["id"] = json!(Ticket::create_new_id());
-            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
-            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
-            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
-            json_value["vc"]["credentialSubject"]["category"] = json!("Vip");
-            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Vip pass");
-            json_value["outputDescriptor"]["display"]["description"]["text"] =
-                json!("With this credential, you have the following benefits/access:\n- Access to the park's premium facilities (15 premium + 15 main attractions)\n- Priority entrance to attractions\n- Fast pass for 5 attractions\n- Access to the general food buffet\n- Unlimited soft drinks and water at all points in the park\n- Unlimited photos within the park\n- Access to the park's pools\n- Access to VIP lounge areas\n- 50% discount on fast pass\n- Priority access to the night show and a 35% discount");
-            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/vip.png");
-            json_value["issuer"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/vip.png");
-            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#FFD700");
-            json_value["issuer"]["styles"]["background"]["color"] = json!("#FFD700");
-        }
-        Category::Extra => {
-            json_value["vc"]["id"] = json!(Ticket::create_new_id());
-            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
-            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
-            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
-            json_value["vc"]["credentialSubject"]["category"] = json!("Extra");
-            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Extra pass");
-            json_value["outputDescriptor"]["display"]["description"]["text"] =
-                json!("With this credential, you have the following benefits/access:\n- Access to the full food buffet (25% discount on seasonal special meals)\n- Access to the pool in the morning and afternoon\n- Access to the night show\n- Unlimited photos within the park\n- Rental of a locker for valuable items\n- Priority reservation at the restaurant\n- In-park transportation service");
-            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/extra.png");
-            json_value["issuer"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/extra.png");
-            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#E67E22");
-            json_value["issuer"]["styles"]["background"]["color"] = json!("#E67E22");
-        }
-        Category::Fast => {
-            json_value["vc"]["id"] = json!(Ticket::create_new_id());
-            json_value["vc"]["issuanceDate"] = json!(Ticket::generate_issuance_date());
-            json_value["vc"]["expirationDate"] = json!(Ticket::generate_expiration_date(8));
-            json_value["vc"]["credentialSubject"]["name"] = json!(&ticket.name);
-            json_value["vc"]["credentialSubject"]["category"] = json!("Fast Pass");
-            json_value["outputDescriptor"]["display"]["title"]["text"] = json!("Fast pass");
-            json_value["outputDescriptor"]["display"]["description"]["text"] =
-                json!("With this credential, you have the following benefit/access:\n- Fast pass to all attractions");
-            json_value["outputDescriptor"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/fast.png");
-            json_value["issuer"]["styles"]["hero"]["uri"] =
-                json!("https://limbertlino.github.io/schemas/images/fast.png");
-            json_value["outputDescriptor"]["styles"]["background"]["color"] = json!("#28B463");
-            json_value["issuer"]["styles"]["background"]["color"] = json!("#28B463");
+                json!(data.description);
+            json_value["outputDescriptor"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
+            json_value["issuer"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
+            json_value["outputDescriptor"]["styles"]["background"]["color"] =
+                json!(data.background_color);
+            json_value["issuer"]["styles"]["background"]["color"] = json!(data.background_color);
         }
     }
 
@@ -161,20 +181,35 @@ async fn create_new_vc(ticket: Json<Ticket>) -> Result<Value, Status> {
 }
 
 #[catch(404)]
-fn not_found() -> &'static str {
-    "Nothing here, sorry!"
+fn handle_not_found() -> Value {
+    json!({ "error": 404, "message": "Resource not found" }
+    )
 }
 
 #[catch(500)]
-fn just_500() -> &'static str {
-    "Ups, server error!"
+fn handle_just_500() -> Value {
+    json!({ "error": 500, "message": "Internal server error" }
+    )
+}
+
+#[catch(422)]
+fn handle_unproccessable_entity() -> Value {
+    json!({ "error": 422, "message": "Unprocessable entity: Validation failed" }
+    )
 }
 
 #[rocket::main]
 async fn main() {
     let _ = rocket::build()
         .mount("/", routes![ping, create_new_vc])
-        .register("/", catchers![not_found, just_500])
+        .register(
+            "/",
+            catchers![
+                handle_not_found,
+                handle_just_500,
+                handle_unproccessable_entity
+            ],
+        )
         .launch()
         .await;
 }
