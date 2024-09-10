@@ -1,0 +1,92 @@
+{
+  "did": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+  "oneTimeUse": true,
+  "vc": {
+    "@context": [
+      "https://w3id.org/security/bbs/v1",
+      "https://www.w3.org/2018/credentials/v1",
+      "https://limbertlino.github.io/schemas/visitor.json"
+    ],
+    "id": "",
+    "type": ["VerifiableCredential", "VisitorCredential"],
+    "issuer": {
+      "id": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
+      "name": "Dreamscape Park"
+    },
+    "issuanceDate": "",
+    "expirationDate": "",
+    "credentialSubject": {
+      "name": "",
+      "category": ""
+    }
+  },
+  "outputDescriptor": {
+    "id": "visitor-output",
+    "schema": "visitor-output",
+    "display": {
+      "title": {
+        "text": ""
+      },
+      "subtitle": {
+        "text": "Enjoy Main Attractions"
+      },
+      "description": {
+        "text": "With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park"
+      },
+      "properties": [
+        {
+          "label": "Name",
+          "path": ["$.credentialSubject.name"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Name"
+        },
+        {
+          "label": "Ticket Type",
+          "path": ["$.credentialSubject.category"],
+          "schema": {
+            "type": "string"
+          },
+          "fallback": "Ticket Type"
+        }
+      ]
+    },
+
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "",
+        "alt": "Background"
+      },
+      "background": {
+        "color": ""
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  },
+  "issuer": {
+    "name": "Dreamscape Park",
+    "styles": {
+      "thumbnail": {
+        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "alt": "Logo"
+      },
+      "hero": {
+        "uri": "",
+        "alt": "Background"
+      },
+      "background": {
+        "color": ""
+      },
+      "text": {
+        "color": "#2B2B2D"
+      }
+    }
+  }
+}
