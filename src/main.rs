@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate rocket;
-
 use chrono::{Duration, Local};
 use nanoid::nanoid;
 use reqwest::Error;
@@ -11,7 +10,6 @@ use rocket::{
 };
 use std::fs;
 
-// enum para cada categoria
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 enum Category {
@@ -21,15 +19,15 @@ enum Category {
     Extra,
 }
 
-impl ToString for Category {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let category_str = match self {
             Category::Standard => "Standard",
             Category::Vip => "Vip",
-            Category::Extra => "Extra",
             Category::Fast => "Fast Pass",
-        }
-        .to_string()
+            Category::Extra => "Extra",
+        };
+        write!(f, "{}", category_str)
     }
 }
 
@@ -40,19 +38,18 @@ struct Ticket {
     category: Category,
 }
 
-//TODO agregar el self aqui paa manejarlo desde la instancia
 impl Ticket {
-    fn create_new_id() -> String {
+    fn create_new_id(&self) -> String {
         nanoid!()
     }
 
-    fn generate_issuance_date() -> String {
+    fn generate_issuance_date(&self) -> String {
         let current_date = Local::now();
         let formated_current_date = current_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
         formated_current_date
     }
 
-    fn generate_expiration_date(hours: i64) -> String {
+    fn generate_expiration_date(&self, hours: i64) -> String {
         let expiration_date = Local::now() + Duration::hours(hours);
         let formated_expiration_date = expiration_date.format("%Y-%m-%dT%H:%M:%S%:z").to_string();
         formated_expiration_date
@@ -66,7 +63,6 @@ struct CategoryData {
     background_color: &'static str,
 }
 
-// defino los datos de cada categoria y me permite obtener estos datos segun el match que coincida
 fn get_category_data(category: &Category) -> CategoryData {
     match category {
         Category::Standard => CategoryData {
@@ -96,7 +92,6 @@ fn get_category_data(category: &Category) -> CategoryData {
     }
 }
 
-// Aqui recibo el json que tengo de template y actualizo los campos comunes que varian
 fn update_common_fields(
     json_value: &mut Value,
     ticket: &Ticket,
@@ -121,27 +116,23 @@ async fn get_issuance_invitation_code(ticket: Ticket) -> Result<Value, Error> {
     let mut json_value: Value =
         serde_json::from_str(&string_local_json_data).expect("JSON was not well-formatted");
 
-    match &ticket.category {
-        category => {
-            let data = get_category_data(category);
-            update_common_fields(
-                &mut json_value,
-                &ticket,
-                &Ticket::create_new_id(),
-                &Ticket::generate_issuance_date(),
-                &Ticket::generate_expiration_date(8),
-            );
+    let category = &ticket.category;
+    let data = get_category_data(category);
 
-            json_value["outputDescriptor"]["display"]["title"]["text"] = json!(data.title);
-            json_value["outputDescriptor"]["display"]["description"]["text"] =
-                json!(data.description);
-            json_value["outputDescriptor"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
-            json_value["issuer"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
-            json_value["outputDescriptor"]["styles"]["background"]["color"] =
-                json!(data.background_color);
-            json_value["issuer"]["styles"]["background"]["color"] = json!(data.background_color);
-        }
-    }
+    update_common_fields(
+        &mut json_value,
+        &ticket,
+        &ticket.create_new_id(),
+        &ticket.generate_issuance_date(),
+        &ticket.generate_expiration_date(8),
+    );
+
+    json_value["outputDescriptor"]["display"]["title"]["text"] = json!(data.title);
+    json_value["outputDescriptor"]["display"]["description"]["text"] = json!(data.description);
+    json_value["outputDescriptor"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
+    json_value["issuer"]["styles"]["hero"]["uri"] = json!(data.hero_uri);
+    json_value["outputDescriptor"]["styles"]["background"]["color"] = json!(data.background_color);
+    json_value["issuer"]["styles"]["background"]["color"] = json!(data.background_color);
 
     let updated_json_string =
         serde_json::to_string(&json_value).expect("Failed to convert JSON value to string");
@@ -153,11 +144,10 @@ async fn get_issuance_invitation_code(ticket: Ticket) -> Result<Value, Error> {
         .send()
         .await;
 
-    //TODO debo sacar el didcom desde aqui para usarlo en la generacion de qr
     match request_response {
         Ok(response) => {
             let response = response.error_for_status()?;
-            let response_body: serde_json::Value = response.json().await?;
+            let response_body: Value = response.json().await?;
             Ok(response_body)
         }
         Err(err) => {
