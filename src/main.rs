@@ -1,16 +1,35 @@
 #[macro_use]
 extern crate rocket;
 use chrono::{Duration, Local};
+use log::error;
 use nanoid::nanoid;
 use reqwest::Error;
 use rocket::{
     http::Status,
-    serde::json::{json, Json, Value},
-    serde::{Deserialize, Serialize},
+    serde::{
+        json::{json, Json, Value},
+        Deserialize, Serialize,
+    },
 };
 use std::fs;
 
-use log::error;
+use image::Luma;
+use qrcode::QrCode;
+
+use rocket::tokio;
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, InputFile};
+
+use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
+
+type MyDialogue = Dialogue<State, InMemStorage<State>>;
+type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+#[derive(Debug, Deserialize)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+struct ResponseData {
+    _invitation_id: String,
+    oob_content_data: String,
+}
 
 /// Enum representing different ticket categories.
 #[derive(Debug, Deserialize, Serialize)]
@@ -32,6 +51,20 @@ impl std::fmt::Display for Category {
         };
         write!(f, "{}", category_str)
     }
+}
+
+#[derive(Clone, Default)]
+pub enum State {
+    #[default]
+    Start,
+    ReceiveName,
+    ReceiveCategory {
+        name: String,
+    },
+    SendQrVc {
+        name: String,
+        category: String,
+    },
 }
 
 /// Struct representing a ticket with a name and category.
@@ -71,31 +104,129 @@ struct CategoryData {
     background_color: &'static str,
 }
 
+fn generate_qr(data: &str, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let code = QrCode::new(data)?;
+
+    let image = code.render::<Luma<u8>>().build();
+
+    image.save(path)?;
+    Ok(())
+}
+
+fn make_keyboard() -> InlineKeyboardMarkup {
+    let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
+
+    let ticket_types = ["Standard", "Vip", "Fast", "Extra"];
+
+    for tickets in ticket_types.chunks(2) {
+        let row = tickets
+            .iter()
+            .map(|&ticket| InlineKeyboardButton::callback(ticket.to_owned(), ticket.to_owned()))
+            .collect(); // se colectan todos estos botones en un vector
+
+        keyboard.push(row);
+    }
+
+    InlineKeyboardMarkup::new(keyboard)
+}
+
+async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+    bot.send_message(
+        msg.chat.id,
+        "Welcome! Please enter the visitor's full name.",
+    )
+    .await?;
+    dialogue.update(State::ReceiveName).await?;
+    Ok(()) // operacion exitosa
+}
+
+async fn receive_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+    if let Some(name) = msg.text() {
+        bot.send_message(msg.chat.id, "Choose your ticket type:")
+            .reply_markup(make_keyboard())
+            .await?;
+
+        dialogue
+            .update(State::ReceiveCategory {
+                name: name.to_string(),
+            })
+            .await?;
+    } else {
+        bot.send_message(msg.chat.id, "Please enter a valid name.")
+            .await?;
+    }
+
+    Ok(())
+}
+
+async fn receive_category(bot: Bot, dialogue: MyDialogue, q: CallbackQuery) -> HandlerResult {
+    if let Some(category) = q.data {
+        if let Some(State::ReceiveCategory { name }) = dialogue.get().await? {
+            bot.send_message(
+                q.from.id,
+                format!("Processing ticket for {} ({})", &name, &category),
+            )
+            .await?;
+
+            // Send data to server
+            let client = reqwest::Client::new();
+            let base_url = "http://localhost:8000/issue-vc";
+
+            let request_body = json!({"name": name, "category": category});
+
+            let request_response = client
+                .put(base_url)
+                .header("Content-type", "application/json")
+                .json(&request_body)
+                .send()
+                .await?;
+
+            let response_data: ResponseData = request_response.json().await?;
+
+            let oob_data = response_data.oob_content_data;
+
+            match generate_qr(&oob_data, "oob_ticket_data.png") {
+                Ok(_) => println!("Qr image succes generated"),
+                Err(e) => eprint!("Error: {}", e),
+            }
+
+            let qr_image = InputFile::file("oob_ticket_data.png");
+            bot.send_photo(q.from.id, qr_image).await?;
+
+            bot.send_message(q.from.id, format!("Your ticket has been processed."))
+                .await?;
+            dialogue.exit().await?;
+        }
+    }
+    Ok(())
+}
+
+//TODO agregar un subtitulo personalizado para cada tipo
 /// Returns metadata for a given ticket category.
 fn get_category_data(category: &Category) -> CategoryData {
     match category {
         Category::Standard => CategoryData {
             title: "Regular Pass",
             description: "With this credential, you have the following benefits/access:\n- Can access the main attractions\n- Free water at designated points\n- Welcome snack and ice cream\n- Personalized welcome upon entering the park",
-            background_color: "#245A8B",
-            hero_uri: "https://limbertlino.github.io/schemas/images/regular.png",
+            background_color: "#FFFFFF",
+            hero_uri: "https://limbertlino.github.io/schemas/images/standard.png",
         },
         Category::Vip => CategoryData {
             title: "Vip Pass",
             description: "With this credential, you have the following benefits/access:\n- Access to the park's premium facilities (15 premium + 15 main attractions)\n- Priority entrance to attractions\n- Fast pass for 5 attractions\n- Access to the general food buffet\n- Unlimited soft drinks and water at all points in the park\n- Unlimited photos within the park\n- Access to the park's pools\n- Access to VIP lounge areas\n- 50% discount on fast pass\n- Priority access to the night show and a 35% discount",
-            background_color: "#FFD700",
+            background_color: "#FFFFFF",
             hero_uri: "https://limbertlino.github.io/schemas/images/vip.png",
         },
         Category::Fast => CategoryData {
             title: "Fast Pass",
             description: "With this credential, you have the following benefit/access:\n- Fast pass to all attractions",
-            background_color: "#28B463",
+            background_color: "#FFFFFF",
             hero_uri: "https://limbertlino.github.io/schemas/images/fast.png",
         },
         Category::Extra => CategoryData {
             title: "Extra Pass",
             description: "With this credential, you have the following benefits/access:\n- Access to the full food buffet (25% discount on seasonal special meals)\n- Access to the pool in the morning and afternoon\n- Access to the night show\n- Unlimited photos within the park\n- Rental of a locker for valuable items\n- Priority reservation at the restaurant\n- In-park transportation service",
-            background_color: "#E67E22",
+            background_color: "#FFFFFF",
             hero_uri: "https://limbertlino.github.io/schemas/images/extra.png",
         },
     }
@@ -186,6 +317,73 @@ async fn create_new_vc(ticket: Json<Ticket>) -> Result<Value, Status> {
     }
 }
 
+#[tokio::main]
+async fn main() {
+    // lanza bot telegram hilo separado
+    let bot_task = tokio::spawn(async {
+        run_bot().await;
+    });
+
+    //lanza el servidor Rocket
+    let rocket_task = rocket().launch();
+
+    // espera que ambos hilos terminen
+    // let _ = tokio::try_join!(bot_task, rocket_task);
+    tokio::select! {
+        _ = bot_task => {
+            println!("Bot task completed")
+        }
+
+        _ = rocket_task => {
+            println!("Rocket task completed")
+        }
+    }
+}
+
+// funcion para ejecutar y confiurar bot de telegram
+async fn run_bot() {
+    pretty_env_logger::init();
+    log::info!("Starting bot...");
+
+    let bot = Bot::from_env();
+
+    Dispatcher::builder(
+        bot,
+        dptree::entry()
+            .branch(
+                Update::filter_message()
+                    .enter_dialogue::<Message, InMemStorage<State>, State>()
+                    .branch(dptree::case![State::Start].endpoint(start))
+                    .branch(dptree::case![State::ReceiveName].endpoint(receive_name)),
+            )
+            .branch(
+                Update::filter_callback_query()
+                    .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>()
+                    .branch(
+                        dptree::case![State::ReceiveCategory { name }].endpoint(receive_category),
+                    ),
+            ),
+    )
+    .dependencies(dptree::deps![InMemStorage::<State>::new()])
+    .enable_ctrlc_handler()
+    .build()
+    .dispatch()
+    .await;
+}
+
+fn rocket() -> rocket::Rocket<rocket::Build> {
+    rocket::build()
+        .mount("/", routes![ping, create_new_vc])
+        .register(
+            "/",
+            catchers![
+                handle_not_found,
+                handle_just_500,
+                handle_unproccessable_entity
+            ],
+        )
+}
+
 #[catch(404)]
 /// Handler for 404 Not Found errors.
 fn handle_not_found() -> Value {
@@ -205,21 +403,6 @@ fn handle_just_500() -> Value {
 fn handle_unproccessable_entity() -> Value {
     json!({ "error": 422, "message": "Unprocessable entity: Validation failed" }
     )
-}
-
-#[launch]
-/// Launches the Rocket web server with the defined routes and catchers.
-fn rocket() -> _ {
-    rocket::build()
-        .mount("/", routes![ping, create_new_vc])
-        .register(
-            "/",
-            catchers![
-                handle_not_found,
-                handle_just_500,
-                handle_unproccessable_entity
-            ],
-        )
 }
 
 #[cfg(test)]

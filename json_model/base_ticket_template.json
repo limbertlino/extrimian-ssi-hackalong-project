@@ -1,6 +1,6 @@
 {
   "did": "did:quarkid:EiD-CWTXMNUwg1Yp-k2AviPN17INFEnwG4cMA7BS4yLHxw",
-  "oneTimeUse": true,
+  "oneTimeUse": false,
   "vc": {
     "@context": [
       "https://w3id.org/security/bbs/v1",
@@ -55,7 +55,7 @@
 
     "styles": {
       "thumbnail": {
-        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "uri": "https://limbertlino.github.io/schemas/images/logo.gif",
         "alt": "Logo"
       },
       "hero": {
@@ -74,7 +74,7 @@
     "name": "Dreamscape Park",
     "styles": {
       "thumbnail": {
-        "uri": "https://cdn.dribbble.com/users/2068059/screenshots/4456420/tech_logo.png",
+        "uri": "https://limbertlino.github.io/schemas/images/logo.gif",
         "alt": "Logo"
       },
       "hero": {
