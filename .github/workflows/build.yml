@@ -1,13 +1,16 @@
 name: main
 
+env:
+  COMMIT_MESSAGES_STRING: ${{ join(github.event.commits.*.message, ', ') }}
+  CARGO_TERM_COLOR: always
+
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
     branches: ["main"]
-
-env:
-  CARGO_TERM_COLOR: always
+    types: [opened, synchronize]
 
 jobs:
   build:
@@ -15,7 +18,52 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Caching dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Build
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose
+
+  discord_status_notificatio:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Pull Request Merged to Main
+        uses: stegzilla/discord-notify@v2
+        if: ${{ success() &&  github.event_name == 'push'  && !contains(env.COMMIT_MESSAGES_STRING, '#skip' ) }}
+        with:
+          webhook_url: ${{secrets.DISCORD_WEBHOOK}}
+          title: Succeeded!
+          message: |
+            **Event Type**: ${{ github.event_name }}
+            **Commit Message**: ${{ github.event.head_commit.message }}
+            **Commit URL**: ${{ github.event.head_commit.url }}
+          include_image: true
+
+      - name: Build Failed
+        uses: stegzilla/discord-notify@v2
+        if: failure()
+        with:
+          webhook_url: ${{secrets.DISCORD_WEBHOOK}}
+          title: Failed!
+          message: |
+            **Event Type**: ${{ github.event_name }}
+            **Commit Message**: ${{ github.event.head_commit.message }}
+            **Commit URL**: ${{ github.event.head_commit.url }}
+          include_image: true
+
+  tag_release:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Bump version and push tag
+        if: ${{ github.event_name == 'push'  && !contains(env.COMMIT_MESSAGES_STRING, '#skip')}}
+        uses: anothrNick/github-tag-action@777684df761b882a3f4f70db16ac70d8cc78d0ea
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          DEFAULT_BUMP: patch
