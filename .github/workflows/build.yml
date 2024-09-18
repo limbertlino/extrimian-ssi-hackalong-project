@@ -27,10 +27,7 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-  discord_status_notificatio:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Pull Request Merged to Main
+      - name: Pull Request Merged to Main Notification
         uses: stegzilla/discord-notify@v2
         if: ${{ success() &&  github.event_name == 'push'  && !contains(env.COMMIT_MESSAGES_STRING, '#skip' ) }}
         with:
@@ -42,7 +39,7 @@ jobs:
             **Commit URL**: ${{ github.event.head_commit.url }}
           include_image: true
 
-      - name: Build Failed
+      - name: Build Failed Notifitacio
         uses: stegzilla/discord-notify@v2
         if: failure()
         with:
