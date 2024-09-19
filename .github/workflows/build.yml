@@ -39,7 +39,7 @@ jobs:
             **Commit URL**: ${{ github.event.head_commit.url }}
           include_image: true
 
-      - name: Build Failed Notifitacio
+      - name: Build Failed Notification
         uses: stegzilla/discord-notify@v2
         if: failure()
         with:
